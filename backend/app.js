@@ -4,6 +4,8 @@ require('dotenv').config();
 
 const app = express();
 
+const userRoutes = require("./routes/user");
+
 mongoose.connect(process.env.MONGO,
   { useNewUrlParser: true,
     useUnifiedTopology: true })
@@ -19,9 +21,6 @@ app.use((req, res, next) => {
     next();
 });
 
-app.get("/", (req, res, next) => {
-    res.json({message: "Running on port 4000"});
-})
-
+app.use("/api/auth", userRoutes);
 
 module.exports = app;
