@@ -2,10 +2,6 @@ const Book = require("../models/Book");
 const fs = require("fs");
 
 exports.createBook = async (req, res, next) => {
-
-    let indexOfDot = req.file.filename.lastIndexOf(".");
-    const myFile = req.file.filename;
-    console.log("My file", myFile);
     
     try {
         const bookObject = JSON.parse(req.body.book);
@@ -15,7 +11,7 @@ exports.createBook = async (req, res, next) => {
         const newBook = new Book({
             ...bookObject,
             userId: req.auth.userId,
-            imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename.substring(0, indexOfDot)}.webp`
+            imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
         });
 
         await newBook.save();
@@ -52,7 +48,7 @@ exports.deleteBook = async (req, res, next) => {
     try {
         const book = await Book.findOne({ _id: req.params.id })
         if (book.userId != req.auth.userId) {
-            res.status(401).json({ message: 'Not authorized' });
+            res.status(403).json({ message: 'Not authorized' });
         } else {
             try {
                 const filename = book.imageUrl.split('/images/')[1];
@@ -73,7 +69,7 @@ exports.deleteBook = async (req, res, next) => {
 exports.editBook = async (req, res, next) => {
 
     const book = await Book.findOne({ _id: req.params.id });
-    const trimmedImageUrl = book.imageUrl.replace('http://localhost:4000', '').split('/images/')[1];
+    const trimmedImageUrl = book.imageUrl.split('/images/')[1];
     console.log("url", trimmedImageUrl);
 
     try {
@@ -85,24 +81,26 @@ exports.editBook = async (req, res, next) => {
                 imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
             };
 
+            console.log("Req file", req.file);
+
             
             fs.unlink(`images/${trimmedImageUrl}`, (err) => {
                 if (err) {
-                    console.error('Error deleting image:', err);
+                    console.error('Error lors de la supression:', err);
                 } else {
                     console.log('Old image deleted successfully');
                 }
             });
         } else {
 
-            bookObject = { ...JSON.parse(req.body.book) };
+            bookObject = { ...req.body };
         }
 
         delete bookObject._userId;
 
 
         if (book.userId != req.auth.userId) {
-            res.status(401).json({ message: 'Not authorized' });
+            res.status(403).json({ message: 'Not authorized' });
         } else {
             try {
                 await Book.updateOne({ _id: req.params.id }, { ...bookObject, _id: req.params.id })
@@ -121,21 +119,13 @@ exports.getTopRated = async (req, res, next) => {
     try {
         const allBooks = await Book.find();
 
-        const booksWithAverageRating = allBooks.map(book => {
-            if (book.ratings.length === 0) {
-                return { ...book.toObject(), averageRating: 0 };
-            }
-            const averageRating = book.ratings.reduce((acc, rating) => acc + rating.grade, 0) / book.ratings.length;
-            return { ...book.toObject(), averageRating };
-        });
+        allBooks.sort((a, b) => b.averageRating - a.averageRating);
 
-        booksWithAverageRating.sort((a, b) => b.averageRating - a.averageRating);
-
-        const topRatedBooks = booksWithAverageRating.slice(0, 3);
+        const topRatedBooks = allBooks.slice(0, 3);
 
         res.status(200).json(topRatedBooks);
     } catch (error) {
-        res.status(500).json({ message: "Error" });
+        res.status(500).json({ message: "Error", error });
     }
 };
 
@@ -151,15 +141,15 @@ exports.addBookRating = async (req, res, next) => {
         const existingRating = await book.ratings.find(rating => rating.userId === userId);
 
         if (!book) {
-            return res.status(404).json({ error: 'Book not found' });
+            return res.status(404).json({ message: 'Livre non trouvé' });
         }
 
         if (existingRating) {
-            return res.status(400).json({ error: 'You have already voted.' });
+            return res.status(400).json({ message: 'Vous avez déja voté.' });
         }
 
         if (!grade) {
-            return res.status(400).json({ error: 'Grade is required' });
+            return res.status(400).json({ message: 'La note est requise' });
         }
 
 
@@ -169,10 +159,10 @@ exports.addBookRating = async (req, res, next) => {
         const totalRatingSum = book.ratings.reduce((sum, rating) => sum + rating.grade, 0);
         book.averageRating = +(totalRatingSum / totalRatings).toFixed(1);
 
-        await book.save();
+        const SingleBook = await book.save();
 
-        console.log("The book", book);
-        res.status(201).json({ book });
+        res.status(201).json({ SingleBook });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal server error' });
