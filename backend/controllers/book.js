@@ -8,6 +8,8 @@ exports.createBook = async (req, res, next) => {
         delete bookObject._id;
         delete bookObject._userId;
 
+        console.log("bOOK", bookObject);
+
         const newBook = new Book({
             ...bookObject,
             userId: req.auth.userId,
@@ -92,7 +94,6 @@ exports.editBook = async (req, res, next) => {
                 }
             });
         } else {
-
             bookObject = { ...req.body };
         }
 
@@ -148,11 +149,6 @@ exports.addBookRating = async (req, res, next) => {
             return res.status(400).json({ message: 'Vous avez déja voté.' });
         }
 
-        if (!grade) {
-            return res.status(400).json({ message: 'La note est requise' });
-        }
-
-
         book.ratings.push({ userId, grade });
 
         const totalRatings = book.ratings.length;
@@ -161,7 +157,7 @@ exports.addBookRating = async (req, res, next) => {
 
         const SingleBook = await book.save();
 
-        res.status(201).json({ SingleBook });
+        res.status(201).json(SingleBook);
 
     } catch (error) {
         console.error(error);
