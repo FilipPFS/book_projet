@@ -151,7 +151,7 @@ exports.addBookRating = async (req, res, next) => {
 
         book.ratings.push({ userId, grade });
 
-        const totalRatings = book.ratings.length;
+        const totalRatings = book.ratings.length; 
         const totalRatingSum = book.ratings.reduce((sum, rating) => sum + rating.grade, 0);
         book.averageRating = +(totalRatingSum / totalRatings).toFixed(1);
 

@@ -17,8 +17,8 @@ const optimized = (req, res, next) => {
   const outputPath = path.join('images', filename);
 
   sharp(req.file.buffer)
-    .resize({ width: 400 }) // Adjust dimensions as needed
-    .webp({ quality: 50 }) // Adjust quality as needed
+    .resize({ width: 400 })
+    .webp({ quality: 50 })
     .toFile(outputPath, (err, info) => {
       if (err) {
         return next(err);
