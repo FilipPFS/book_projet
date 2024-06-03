@@ -69,12 +69,16 @@ exports.deleteBook = async (req, res, next) => {
 }
 
 exports.editBook = async (req, res, next) => {
-
-    const book = await Book.findOne({ _id: req.params.id });
-    const trimmedImageUrl = book.imageUrl.split('/images/')[1];
-    console.log("url", trimmedImageUrl);
-
     try {
+        const book = await Book.findOne({ _id: req.params.id });
+        
+        if (book.userId !== req.auth.userId) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        const trimmedImageUrl = book.imageUrl.split('/images/')[1];
+        console.log("url", trimmedImageUrl);
+
         let bookObject;
 
         if (req.file) {
@@ -82,13 +86,10 @@ exports.editBook = async (req, res, next) => {
                 ...JSON.parse(req.body.book),
                 imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
             };
-
-            console.log("Req file", req.file);
-
             
             fs.unlink(`images/${trimmedImageUrl}`, (err) => {
                 if (err) {
-                    console.error('Error lors de la supression:', err);
+                    console.error('Error lors de la suppression:', err);
                 } else {
                     console.log('Old image deleted successfully');
                 }
@@ -99,22 +100,18 @@ exports.editBook = async (req, res, next) => {
 
         delete bookObject._userId;
 
-
-        if (book.userId != req.auth.userId) {
-            res.status(403).json({ message: 'Not authorized' });
-        } else {
-            try {
-                await Book.updateOne({ _id: req.params.id }, { ...bookObject, _id: req.params.id })
-                res.status(200).json({ message: 'Objet modifié!' })
-            } catch (error) {
-                res.status(401).json({ error })
-            }
+        try {
+            await Book.updateOne({ _id: req.params.id }, { ...bookObject, _id: req.params.id });
+            res.status(200).json({ message: 'Object modified!' });
+        } catch (error) {
+            res.status(401).json({ error });
         }
     } catch (error) {
         console.log(error);
         res.status(400).json({ error });
     }
 }
+
 
 exports.getTopRated = async (req, res, next) => {
     try {
